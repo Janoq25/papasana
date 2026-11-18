@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
@@ -28,6 +29,8 @@ import ComparisonTab from "./ComparisonTab";
 import { ARCH_LABEL, canPromote, canRollbackTo, fmtMetric, STAGE_COLOR, STAGE_LABEL, summarize } from "./labUtils";
 import ModelDetailDialog from "./ModelDetailDialog";
 import PromotionsTab, { RequestDialog } from "./PromotionsTab";
+
+const ResearchTab = lazy(() => import("./research/ResearchTab"));
 
 function ServiceStatus({ status }: { status?: LabStatus }) {
   if (!status) return null;
@@ -106,7 +109,15 @@ function ModelsTable({ models, promotions, onDetail, onRequest }: {
 export default function LabPage() {
   const { can } = useAuth();
   const qc = useQueryClient();
-  const [tab, setTab] = useState(0);
+  const [search, setSearch] = useSearchParams();
+  const [otherTab, setOtherTab] = useState(0);
+  const tab = search.get("vista") === "articulo" ? 3 : otherTab;
+  const setTab = (value: number) => {
+    setOtherTab(value === 3 ? 0 : value);
+    const next = new URLSearchParams(search);
+    if (value === 3) next.set("vista", "articulo"); else next.delete("vista");
+    setSearch(next, { replace: true });
+  };
   const [detail, setDetail] = useState<number | null>(null);
   const [request, setRequest] = useState<{ m: LabModel; action: "promover" | "rollback" } | null>(null);
   const models = useQuery({ queryKey: ["laboratorio", "modelos"], queryFn: () => api<LabModel[]>("/laboratorio/modelos") });
@@ -136,10 +147,11 @@ export default function LabPage() {
         </Alert>
       )}
       <ServiceStatus status={status.data} />
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }} aria-label="Vistas del laboratorio">
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile aria-label="Vistas del laboratorio">
         <Tab label="Modelos" />
         <Tab label="Comparación estadística" />
         <Tab label={<Badge color="warning" badgeContent={pendingCount}>Promociones&nbsp;&nbsp;</Badge>} />
+        <Tab label="Resultados para el artículo" />
       </Tabs>
       {tab === 0 && (
         <>
@@ -156,6 +168,7 @@ export default function LabPage() {
       )}
       {tab === 1 && <ComparisonTab />}
       {tab === 2 && <PromotionsTab promotions={promotions.data ?? []} />}
+      {tab === 3 && <Suspense fallback={<Typography role="status">Cargando resultados para el artículo…</Typography>}><ResearchTab /></Suspense>}
       <ModelDetailDialog modelId={detail} onClose={() => setDetail(null)} />
       <RequestDialog target={request?.m ?? null} action={request?.action ?? "promover"} onClose={() => setRequest(null)} />
     </Box>

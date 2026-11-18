@@ -63,17 +63,26 @@ def device() -> torch.device:
 def _loader(df, cfg: ExperimentCfg, transform, shuffle: bool) -> DataLoader:
     ds = ManifestDataset(df, cfg.data.roots, transform)
     return DataLoader(ds, batch_size=cfg.train.batch_size, shuffle=shuffle, num_workers=cfg.train.num_workers,
-                      pin_memory=torch.cuda.is_available(), drop_last=shuffle and len(ds) > cfg.train.batch_size)
+                      pin_memory=torch.cuda.is_available(), drop_last=False)
+
+
+def classifier_parameters(model: nn.Module) -> list[nn.Parameter]:
+    classifier = model.get_classifier() if hasattr(model, "get_classifier") else model.head
+    return list(classifier.parameters())
 
 
 @torch.no_grad()
-def predict_logits(model: nn.Module, loader: DataLoader, dev: torch.device) -> tuple[np.ndarray, np.ndarray]:
+def predict_logits(model: nn.Module, loader: DataLoader, dev: torch.device, *,
+                   amp: bool = True, amp_dtype: str = "float16") -> tuple[np.ndarray, np.ndarray]:
     model.eval()
     logits, labels = [], []
     for x, y, _ in loader:
-        with torch.autocast(dev.type, enabled=dev.type == "cuda"):
+        with torch.autocast(dev.type, enabled=amp and dev.type == "cuda", dtype=getattr(torch, amp_dtype)):
             out = model(x.to(dev, non_blocking=True))
-        logits.append(out.float().cpu().numpy())
+        chunk = out.float().cpu().numpy()
+        if not np.isfinite(chunk).all():
+            raise FloatingPointError(f"Logits no finitos con precisión {amp_dtype}; no se calculan métricas.")
+        logits.append(chunk)
         labels.append(y.numpy())
     if not logits:
         return np.zeros((0, len(CLASSES))), np.zeros(0, dtype=int)
@@ -106,6 +115,11 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
     seed_everything(cfg.train.seed + (fold or 0))
     check_no_leakage(parts)
     dev = device()
+    if cfg.train.require_cuda and dev.type != "cuda":
+        raise RuntimeError("Este perfil exige GPU CUDA. No se cambia silenciosamente a CPU.")
+    if dev.type == "cuda":
+        torch.cuda.reset_peak_memory_stats()
+    torch.set_num_threads(min(4, torch.get_num_threads()))
     img_size = cfg.img_size or SPECS[cfg.architecture].default_img_size
     train_loader = _loader(parts["train"], cfg, train_transform(img_size), shuffle=True)
     eval_tf = eval_transform(img_size)
@@ -115,7 +129,13 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
 
     model = build_model(cfg.architecture, len(CLASSES), img_size=img_size, pretrained=cfg.pretrained,
                         **copy.deepcopy(cfg.hparams)).to(dev)
-    opt = torch.optim.AdamW(model.parameters(), lr=cfg.train.lr, weight_decay=cfg.train.weight_decay)
+    log.info("Entrenamiento en %s | modelo=%s | GPU=%s", dev, next(model.parameters()).device,
+             torch.cuda.get_device_name() if dev.type == "cuda" else "sin GPU")
+    head = classifier_parameters(model)
+    head_ids = {id(p) for p in head}
+    backbone = [p for p in model.parameters() if id(p) not in head_ids]
+    opt = torch.optim.AdamW([{"params": backbone, "lr": cfg.train.lr * cfg.train.backbone_lr_factor},
+                             {"params": head, "lr": cfg.train.lr}], weight_decay=cfg.train.weight_decay)
     epochs = max_epochs or cfg.train.epochs
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=epochs)
     # Pesos por clase inversos a la frecuencia del entrenamiento (las clases suelen estar desbalanceadas)
@@ -123,7 +143,11 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
     weights = torch.tensor(np.where(counts > 0, counts.sum() / (len(CLASSES) * np.maximum(counts, 1)), 0.0),
                            dtype=torch.float32, device=dev)
     loss_fn = nn.CrossEntropyLoss(weight=weights, label_smoothing=cfg.train.label_smoothing)
-    scaler = torch.amp.GradScaler(enabled=cfg.train.amp and dev.type == "cuda")
+    amp_enabled = cfg.train.amp and dev.type == "cuda"
+    amp_dtype = getattr(torch, cfg.train.amp_dtype)
+    if amp_enabled and amp_dtype == torch.bfloat16 and not torch.cuda.is_bf16_supported():
+        raise RuntimeError("La GPU no admite bfloat16; elija float16 o desactive AMP.")
+    scaler = torch.amp.GradScaler(enabled=amp_enabled and amp_dtype == torch.float16)
 
     datasets = sorted(set().union(*[set(p["dataset_id"]) for p in parts.values()]))
     tags = common_tags(run_type, cfg.architecture, smoke_test=cfg.smoke_test, dataset_ids=datasets)
@@ -138,24 +162,42 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
                            **{f"n_{k}": len(v) for k, v in parts.items()}})
         best_f1, best_loss, best_state, best_epoch, bad, stopped = -1.0, math.inf, None, 0, 0, False
         for epoch in range(1, epochs + 1):
+            frozen = epoch <= cfg.train.freeze_epochs
+            for parameter in backbone:
+                parameter.requires_grad_(not frozen)
             model.train()
+            if frozen:
+                for module in model.modules():
+                    if isinstance(module, nn.modules.batchnorm._BatchNorm):
+                        module.eval()
             total, seen = 0.0, 0
-            for x, y, _ in train_loader:
+            opt.zero_grad(set_to_none=True)
+            for batch_index, (x, y, _) in enumerate(train_loader):
                 x, y = x.to(dev, non_blocking=True), y.to(dev, non_blocking=True)
-                opt.zero_grad(set_to_none=True)
-                with torch.autocast(dev.type, enabled=scaler.is_enabled()):
+                with torch.autocast(dev.type, enabled=amp_enabled, dtype=amp_dtype):
                     loss = loss_fn(model(x), y)
-                scaler.scale(loss).backward()
-                scaler.step(opt)
-                scaler.update()
+                if not torch.isfinite(loss):
+                    raise FloatingPointError(f"Pérdida no finita en época {epoch}, lote {batch_index}.")
+                window_start = (batch_index // cfg.train.accumulation_steps) * cfg.train.accumulation_steps
+                window_size = min(cfg.train.accumulation_steps, len(train_loader) - window_start)
+                scaler.scale(loss / window_size).backward()
+                if (batch_index + 1) % cfg.train.accumulation_steps == 0 or batch_index + 1 == len(train_loader):
+                    scaler.unscale_(opt)
+                    nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                    scaler.step(opt)
+                    scaler.update()
+                    opt.zero_grad(set_to_none=True)
                 total += float(loss.detach()) * len(y)
                 seen += len(y)
             sched.step()
-            v_logits, v_labels = predict_logits(model, loaders["val"], dev)
+            v_logits, v_labels = predict_logits(model, loaders["val"], dev, amp=cfg.train.amp,
+                                            amp_dtype=cfg.train.amp_dtype)
             v_loss = float(nn.functional.cross_entropy(torch.from_numpy(v_logits), torch.from_numpy(v_labels)))
             v_f1 = compute_metrics(v_labels, softmax(v_logits), CLASSES, curves=False)["macro_f1"] or 0.0
             mlflow.log_metrics({"train_loss": total / max(seen, 1), "val_loss": v_loss, "val_macro_f1_epoch": v_f1,
                                 "lr": sched.get_last_lr()[0]}, step=epoch)
+            log.info("%s época %s/%s: loss=%.4f val_F1=%.4f tiempo=%.1fs backbone=%s", run_name, epoch,
+                     epochs, total / max(seen, 1), v_f1, time.time() - t0, "congelado" if frozen else "ajustable")
             if v_f1 > best_f1 or (v_f1 == best_f1 and v_loss < best_loss):
                 best_f1, best_loss, best_epoch, bad = v_f1, v_loss, epoch, 0
                 best_state = copy.deepcopy(model.state_dict())
@@ -176,8 +218,11 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
                 mlflow.set_tag("stopped_by_time_budget", "true")
                 break
 
+        for parameter in backbone:
+            parameter.requires_grad_(True)
         model.load_state_dict(best_state)
-        v_logits, v_labels = predict_logits(model, loaders["val"], dev)
+        v_logits, v_labels = predict_logits(model, loaders["val"], dev, amp=cfg.train.amp,
+                                            amp_dtype=cfg.train.amp_dtype)
         temperature = fit_temperature(v_logits, v_labels)
         evaluation = {"val": _evaluate_split("val", v_logits, v_labels, temperature)}
         metrics = {"temperature": temperature, "best_epoch": best_epoch, **scalar_metrics(evaluation["val"], "val")}
@@ -185,7 +230,8 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
         for name, loader in loaders.items():
             if name == "val" or (name == "test" and not evaluate_test):
                 continue
-            logits, labels = predict_logits(model, loader, dev)
+            logits, labels = predict_logits(model, loader, dev, amp=cfg.train.amp,
+                                              amp_dtype=cfg.train.amp_dtype)
             evaluation[name] = _evaluate_split(name, logits, labels, temperature)
             metrics.update(scalar_metrics(evaluation[name], name))
             metrics[f"{name}_ece"] = evaluation[name]["calibration"]["after"]["ece"]
@@ -194,6 +240,9 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
         elapsed = time.time() - t0
         metrics["train_seconds"] = elapsed
         metrics["gpu_hours"] = elapsed / 3600 if dev.type == "cuda" else 0.0
+        if dev.type == "cuda":
+            metrics["gpu_peak_memory_mb"] = torch.cuda.max_memory_allocated() / 1024**2
+            mlflow.set_tag("gpu_name", torch.cuda.get_device_name())
         mlflow.log_metrics(metrics)
         mlflow.set_tag("stopped_early", str(stopped).lower())
         log_json(evaluation, "evaluation.json")
@@ -205,10 +254,14 @@ def train_split(cfg: ExperimentCfg, parts: dict[str, pd.DataFrame], *, run_type:
         if log_model:
             mcfg = make_config(cfg.architecture, CLASSES, img_size=img_size, hparams=cfg.hparams,
                                temperature=temperature, smoke_test=cfg.smoke_test,
-                               extra={"run_id": run.info.run_id, "train_datasets": cfg.data.train_datasets})
+                               extra={"run_id": run.info.run_id, "train_datasets": cfg.data.train_datasets,
+                                      "inference_amp": cfg.train.amp, "inference_amp_dtype": cfg.train.amp_dtype})
             with tempfile.TemporaryDirectory() as tmp:
                 save_model_dir(model.cpu(), mcfg, Path(tmp) / "model")
                 mlflow.log_artifacts(str(Path(tmp) / "model"), artifact_path="model")
+        del model, opt, scaler
+        if dev.type == "cuda":
+            torch.cuda.empty_cache()
         return FoldResult(run.info.run_id, metrics, best_epoch, stopped, evaluation)
 
 

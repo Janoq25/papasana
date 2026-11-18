@@ -487,3 +487,43 @@ Este archivo cumple la regla §7.4 de la especificación: cuando algo es ambiguo
 
 - El dashboard muestra la accuracy del modelo en producción, en este orden de preferencia: media de la validación cruzada, validación externa, validación interna. Indica la fuente.
 - Nunca se muestra para el DEMO ni para un modelo de prueba de humo.
+
+
+## D-63 Entrenamiento local en RTX 3050 de 4 GB y datos verificados (2026-11-18)
+
+- El usuario solicitó entrenar en la GPU de su laptop y trabajar en el repositorio local de AP-01. Se comprobó CUDA con PyTorch 2.7.1+cu128, modelo, entradas y pérdida en `cuda:0`.
+- PlantVillage RGB de papa se conserva para desarrollo y PlantDoc para evaluación externa. Se verificaron documentalmente CC-BY-SA-3.0 y CC-BY-4.0 en las publicaciones de los autores y se fijaron las revisiones de origen.
+- Los IDs de `leaf-map.json` se filtran por clase de papa: un nombre puede repetirse entre especies. Ninguna de las 538 hojas publicadas queda repartida entre folds.
+- Se restauró el paquete de datos omitido por la regla `data/`, limitada ahora a `/data/`. Se añadieron perfiles para 4 GB, acumulación de gradientes y el ejecutor `scripts/train-gpu.ps1`.
+- Se corrigió el F1 de clases presentes que nunca se predicen; ahora cuentan como cero y tienen una prueba de regresión.
+- El protocolo anidado 5×3 está implementado y probado para la comparación completa; el piloto de ResNet50 es una ejecución separada y no sustituye ese estudio.
+- Las métricas preliminares previas a estas correcciones se marcaron como invalidadas. No se promueve automáticamente un candidato entrenado.
+- Evidencia, limitaciones, licencias y comandos: `docs/reentrenamiento.md`. Los resultados reales se guardan en `ml/data/` y en MLflow local.
+
+
+## D-64 Cuatro arquitecturas con prioridad de tiempo y calidad observada (2026-11-18)
+
+- Por solicitud del usuario, esta comparación incluye ResNet50, EfficientNetV2-B0, MobileNetV4 Conv Medium y EfficientViT-B1: cuatro arquitecturas en total. Las alternativas del plan previo no se eliminan.
+- Las tres nuevas reutilizan timm y pesos públicos Apache-2.0 con revisiones fijadas. No se incorporan servicios, credenciales ni gastos.
+- Se usa un presupuesto común de hasta 16 épocas, parada anticipada, lote nominal 32 y GPU CUDA local. El ResNet50 previo se conserva.
+- La elección de velocidad sin menor F1 observado se fija antes de la evaluación descriptiva de PlantDoc; no se afirma no inferioridad estadística ni calidad de campo garantizada.
+- Protocolo, licencias, limitaciones y resultados: `docs/comparacion-cuatro-modelos.md`.
+
+- D-64, resultado: los cuatro entrenamientos terminaron en CUDA; ResNet50 ganó la regla de tiempo con F1 de referencia y EfficientViT-B1 alcanzó el mayor F1 interno. Ninguno resolvió la caída observada en PlantDoc. Se usó FP16 para ResNet/EfficientNetV2 y BF16 para MobileNetV4/EfficientViT tras descartar un intento FP16 inestable. Trazabilidad y verificación de checkpoints conservadas.
+
+
+## D-65 Resultados para el artículo dentro del Laboratorio (2026-11-18)
+
+- Se incorporó una pestaña de resultados científicos con comparación, detalle por modelo, EDA, metodología y trazabilidad de los cuatro entrenamientos reales.
+- Se conserva MUI y el permiso `laboratorio:ver`. La API sirve snapshots publicados y verificados, sin depender de MLflow para su lectura ni exponer fotos, pesos o rutas locales.
+- Las figuras parten de SVG y se rasterizan para un ancho físico definido a 600 DPI, escribiendo pHYs correcto. Las tablas se copian como HTML y texto con procedencia y precisión de los valores visibles.
+- La metodología distingue el holdout realmente ejecutado de la validación anidada pendiente y mantiene PlantDoc fuera de la selección.
+- No se incorporaron dependencias de producción, migraciones ni cambios en el modelo activo. Uso, publicación y verificación: `docs/resultados-articulo.md`.
+
+## D-66 Despliegue Docker y artículo con hallazgos reales (2026-11-18)
+
+- Se corrigió el driver psycopg 3 de MLflow y se amplió únicamente su límite a 1024 MiB tras verificar OOM a 512 MiB.
+- El frontend construye y prueba con un fixture autocontenido; el informe de producción mantiene el snapshot real del backend.
+- En esta laptop se habilitó un puente local Windows en 127.0.0.1:18080 por un fallo de publicación de puertos con WSL mirrored. No se cambió el firewall ni la configuración global de WSL. El usuario confirmó acceso.
+- Se generó otro artículo conservando el original, con cinco figuras de 600 dpi, seis tablas editables y revisión de sus 15 páginas renderizadas. Se distinguen evaluación externa descriptiva, análisis de clases emparejadas, bootstrap por grupos y NLL estable posterior.
+- Backend: 242 pruebas aprobadas y 89 % de cobertura. Frontend: 51 pruebas aprobadas. Sin cambios de esquema ni promoción automática de pesos. Guía y límites: docs/despliegue-articulo-20261118.md.

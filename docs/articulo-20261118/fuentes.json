@@ -1,0 +1,72 @@
+[
+  {
+    "id": "1",
+    "reference": "Mohanty SP, Hughes DP, Salathé M. Using Deep Learning for Image-Based Plant Disease Detection. Frontiers in Plant Science. 2016;7:1419. doi:10.3389/fpls.2016.01419.",
+    "url": "https://www.frontiersin.org/journals/plant-science/articles/10.3389/fpls.2016.01419/full"
+  },
+  {
+    "id": "2",
+    "reference": "Singh D, Jain N, Jain P, Kayal P, Kumawat S, Batra N. PlantDoc: A Dataset for Visual Plant Disease Detection. CODS COMAD. 2020. doi:10.1145/3371158.3371196. Prepublicación de los autores de 2019.",
+    "url": "https://arxiv.org/abs/1911.10317"
+  },
+  {
+    "id": "3",
+    "reference": "He K, Zhang X, Ren S, Sun J. Deep Residual Learning for Image Recognition. CVPR. 2016:770–778. doi:10.1109/CVPR.2016.90.",
+    "url": "https://openaccess.thecvf.com/content_cvpr_2016/html/He_Deep_Residual_Learning_CVPR_2016_paper.html"
+  },
+  {
+    "id": "4",
+    "reference": "Tan M, Le QV. EfficientNetV2: Smaller Models and Faster Training. Proceedings of Machine Learning Research. 2021;139:10096–10106.",
+    "url": "https://proceedings.mlr.press/v139/tan21a.html"
+  },
+  {
+    "id": "5",
+    "reference": "Qin D et al. MobileNetV4: Universal Models for the Mobile Ecosystem. ECCV. 2024. doi:10.1007/978-3-031-73661-2_5.",
+    "url": "https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/05647.pdf"
+  },
+  {
+    "id": "6",
+    "reference": "Cai H, Li J, Hu M, Gan C, Han S. EfficientViT: Lightweight Multi-Scale Attention for High-Resolution Dense Prediction. ICCV. 2023:17302–17313.",
+    "url": "https://openaccess.thecvf.com/content/ICCV2023/html/Cai_EfficientViT_Lightweight_Multi-Scale_Attention_for_High-Resolution_Dense_Prediction_ICCV_2023_paper.html"
+  },
+  {
+    "id": "7",
+    "reference": "Guo C, Pleiss G, Sun Y, Weinberger KQ. On Calibration of Modern Neural Networks. Proceedings of Machine Learning Research. 2017;70:1321–1330.",
+    "url": "https://proceedings.mlr.press/v70/guo17a.html"
+  },
+  {
+    "id": "8",
+    "reference": "Selvaraju RR et al. Grad-CAM: Visual Explanations From Deep Networks via Gradient-Based Localization. ICCV. 2017:618–626. doi:10.1109/ICCV.2017.74.",
+    "url": "https://openaccess.thecvf.com/content_iccv_2017/html/Selvaraju_Grad-CAM_Visual_Explanations_ICCV_2017_paper.html"
+  },
+  {
+    "id": "9",
+    "reference": "Geirhos R et al. Shortcut learning in deep neural networks. Nature Machine Intelligence. 2020;2:665–673. doi:10.1038/s42256-020-00257-z.",
+    "url": "https://www.nature.com/articles/s42256-020-00257-z"
+  },
+  {
+    "id": "10",
+    "reference": "Kapoor S, Narayanan A. Leakage and the reproducibility crisis in machine-learning-based science. Patterns. 2023;4:100804. doi:10.1016/j.patter.2023.100804.",
+    "url": "https://arxiv.org/abs/2207.07048"
+  },
+  {
+    "id": "11",
+    "reference": "Mohanty SP y colaboradores. PlantVillage Dataset. Documentación de datos y archivo de identificación de hojas. Revisión 7f7ecc7e1eaca78107e3affe7cb5abd9427e139a. Consultado el 18 de noviembre de 2026.",
+    "url": "https://raw.githubusercontent.com/spMohanty/PlantVillage-Dataset/7f7ecc7e1eaca78107e3affe7cb5abd9427e139a/README_HF.md"
+  },
+  {
+    "id": "12",
+    "reference": "Kayal P y colaboradores. PlantDoc Dataset. Repositorio de datos. Revisión 5467f6012d78d1c446145d5f582da6096f852ae8. Consultado el 18 de noviembre de 2026.",
+    "url": "https://github.com/pratikkayal/PlantDoc-Dataset/tree/5467f6012d78d1c446145d5f582da6096f852ae8"
+  },
+  {
+    "id": "13",
+    "reference": "timm. Fichas de los modelos pretrained ResNet50, EfficientNetV2 B0, MobileNetV4 Conv Medium y EfficientViT B1. Las revisiones de pesos se conservan en model_sources.json. Consultado el 18 de noviembre de 2026.",
+    "url": "https://huggingface.co/timm/resnet50.a1_in1k ; https://huggingface.co/timm/tf_efficientnetv2_b0.in1k ; https://huggingface.co/timm/mobilenetv4_conv_medium.e500_r224_in1k ; https://huggingface.co/timm/efficientvit_b1.r224_in1k"
+  },
+  {
+    "id": "14",
+    "reference": "Efron B. Bootstrap Methods: Another Look at the Jackknife. The Annals of Statistics. 1979;7:1–26. doi:10.1214/aos/1176344552.",
+    "url": "https://doi.org/10.1214/aos/1176344552"
+  }
+]

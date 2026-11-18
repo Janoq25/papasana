@@ -5,7 +5,7 @@ description = "Backend de PapaSana AP-01: detección por síntomas del tizón ta
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "unit_tests"]
 addopts = "-q"
 filterwarnings = ["ignore::DeprecationWarning"]
 

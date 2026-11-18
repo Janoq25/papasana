@@ -1,0 +1,2 @@
+base: quick4_base.yaml
+architecture: resnet50

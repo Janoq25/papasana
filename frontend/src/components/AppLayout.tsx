@@ -156,7 +156,7 @@ export default function AppLayout() {
         )}
       </Box>
 
-      <Box component="main" id="contenido" tabIndex={-1} sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, width: { md: `calc(100% - ${DRAWER_WIDTH}px)` } }}>
+      <Box component="main" id="contenido" tabIndex={-1} sx={{ flexGrow: 1, minWidth: 0, p: { xs: 2, md: 3 }, width: { xs: "100%", md: `calc(100% - ${DRAWER_WIDTH}px)` } }}>
         <Toolbar />
         <Outlet />
       </Box>

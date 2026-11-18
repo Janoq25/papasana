@@ -1,0 +1,4 @@
+base: quick4_base.yaml
+architecture: mobilenetv4_conv_medium
+train:
+  amp_dtype: bfloat16

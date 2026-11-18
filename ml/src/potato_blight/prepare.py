@@ -27,9 +27,14 @@ def prepare(cfg: ExperimentCfg, registry: Registry, *, allow_unverified: bool = 
         frames.append(build_manifest(entry, root, allow_unverified=allow_unverified))
     raw = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     grouped = assign_groups(raw, cfg.data.near_duplicate_distance)
-    df = assign_folds(grouped, cfg.data.train_datasets, cfg.data.n_splits, cfg.train.seed)
+    # Los grupos visuales con etiquetas incompatibles necesitan revisión.
+    clean = grouped[~grouped["label_conflict"]].copy()
+    df = assign_folds(clean, cfg.data.train_datasets, cfg.data.n_splits, cfg.train.seed)
     ext = external_split(df, cfg.data.external_datasets, cfg.data.train_datasets)
     report = dedup_report(raw, grouped)
+    report["cuarentena"] = grouped.loc[grouped["label_conflict"],
+                                        ["dataset_id", "path", "label", "group_id"]].to_dict(orient="records")
+    report["grupos_aceptados"] = int(df["group_id"].nunique())
     folds = df[df["fold"] >= 0]["fold"].value_counts().sort_index()
     report["por_particion"] = {str(k): int(v) for k, v in folds.items()}
     report["externo_utilizable"] = int(len(ext))

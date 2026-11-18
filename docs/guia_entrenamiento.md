@@ -1,5 +1,10 @@
 # Guía de entrenamiento y registro de modelos
 
+> Actualización del 18 de noviembre de 2026: consulte [Entrenamiento reproducible](reentrenamiento.md) para
+> las fuentes oficiales verificadas, la GPU local de 4 GB, el EDA ejecutable y la validación agrupada anidada.
+> El flujo `tune` seguido de `train --mode cv` descrito abajo corresponde al procedimiento convencional previo;
+> no equivale a una búsqueda independiente dentro de cada fold externo. No debe presentarse como CV anidada.
+
 Cómo pasar de los datos a un modelo en producción en AP-01. El código está en `ml/` (paquete `potato_blight`), separado de la aplicación.
 
 ## 0. Flujo completo

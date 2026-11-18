@@ -27,12 +27,12 @@ from potato_blight.train import train_split
 log = logging.getLogger("potato_blight")
 
 
-def search_space(trial: optuna.Trial, arch: str) -> tuple[dict, dict]:
+def search_space(trial: optuna.Trial, arch: str, batch_size: int = 32) -> tuple[dict, dict]:
     train = {
         "lr": trial.suggest_float("lr", 1e-5, 3e-3, log=True),
         "weight_decay": trial.suggest_float("weight_decay", 1e-6, 1e-2, log=True),
         "label_smoothing": trial.suggest_float("label_smoothing", 0.0, 0.2),
-        "batch_size": trial.suggest_categorical("batch_size", [16, 32]),
+        "batch_size": trial.suggest_categorical("batch_size", sorted({max(2, batch_size // 2), batch_size})),
     }
     hp = {"drop_rate": trial.suggest_float("drop_rate", 0.0, 0.5)}
     if arch == "cnn_vit":
@@ -61,7 +61,7 @@ def tune(cfg: ExperimentCfg, df: pd.DataFrame, storage: str | None = None) -> di
                            "fold": t.fold, "sampler": "TPE", "pruner": "MedianPruner"})
 
         def objective(trial: optuna.Trial) -> float:
-            train_over, hp = search_space(trial, cfg.architecture)
+            train_over, hp = search_space(trial, cfg.architecture, cfg.train.batch_size)
             trial_cfg = cfg.model_copy(deep=True)
             trial_cfg.train = trial_cfg.train.model_copy(update=train_over)
             trial_cfg.hparams = {**cfg.hparams, **hp}

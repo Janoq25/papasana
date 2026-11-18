@@ -16,9 +16,12 @@ def test_registro_valido_y_sin_licencias_inventadas():
     # Early blight (Alternaria) NUNCA se mapea a tizón tardío (D-01)
     assert pv.class_map["Potato___Early_blight"] == "otra_enfermedad_foliar"
     assert pv.class_map["Potato___Late_blight"] == "sintomas_compatibles_tizon_tardio"
-    # Los datasets externos no tienen la licencia verificada todavía: no se pueden usar
+    # La verificación se respalda en la fuente oficial fijada, no en copias de terceros.
     for ds in ("plantvillage_papa", "plantdoc_papa"):
-        assert reg.get(ds).license_status == "por_verificar" and not reg.get(ds).usable
+        entry = reg.get(ds)
+        assert entry.usable and entry.license_url.startswith("https://github.com/")
+        assert entry.version in entry.license_url
+    assert pv.has_group_ids
     assert reg.get("sintetico_smoke").usable
 
 
@@ -29,6 +32,7 @@ def test_clase_desconocida_en_el_registro():
 
 def test_no_se_indexa_un_dataset_sin_licencia(tmp_path):
     entry = load_registry().get("plantvillage_papa")
+    entry = entry.model_copy(update={"license_status": "por_verificar"})
     with pytest.raises(LicenseNotVerified):
         build_manifest(entry, tmp_path)
 

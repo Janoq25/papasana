@@ -1,0 +1,15 @@
+base: resnet50.yaml
+experiment: papasana-piloto-gpu-20261118-v3
+train:
+  batch_size: 8
+  accumulation_steps: 4
+  freeze_epochs: 2
+  backbone_lr_factor: 0.1
+  lr: 0.001
+  weight_decay: 0.0001
+  label_smoothing: 0.0
+  num_workers: 0
+  require_cuda: true
+  epochs: 8
+  patience: 4
+  max_minutes: 25

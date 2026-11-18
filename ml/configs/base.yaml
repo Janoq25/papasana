@@ -1,6 +1,7 @@
 # Configuración común a los cinco modelos. El presupuesto de búsqueda (tuning) es IDÉNTICO para todos
 # (comparación justa, docs/fase0_plan.md §6.3). Las rutas son relativas a la carpeta ml/.
 experiment: papasana-ap01
+architecture: resnet50  # Permite preparar datos con base.yaml; cada perfil declara su arquitectura.
 pretrained: true
 train:
   epochs: 30

@@ -1,0 +1,9 @@
+base: efficientnet_b3.yaml
+experiment: papasana-nested-gpu
+train:
+  batch_size: 4
+  accumulation_steps: 8
+  freeze_epochs: 2
+  backbone_lr_factor: 0.1
+  num_workers: 0
+  require_cuda: true

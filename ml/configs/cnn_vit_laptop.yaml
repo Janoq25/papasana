@@ -1,0 +1,9 @@
+base: cnn_vit.yaml
+experiment: papasana-nested-gpu
+train:
+  batch_size: 8
+  accumulation_steps: 4
+  freeze_epochs: 2
+  backbone_lr_factor: 0.1
+  num_workers: 0
+  require_cuda: true

@@ -167,7 +167,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512m
+          memory: 1024m
     restart: unless-stopped
 
   # Inferencia (PyTorch CPU) + Grad-CAM. Sin puerto publicado: solo la red interna.

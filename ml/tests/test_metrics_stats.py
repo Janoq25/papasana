@@ -92,3 +92,11 @@ def test_bootstrap_contiene_el_valor():
     p = softmax(logits)
     r = bootstrap_ci(lambda yt, pp: f1_score(yt, pp.argmax(1), average="macro"), y, p, n_boot=200)
     assert r["ic_inferior"] <= r["valor"] <= r["ic_superior"]
+
+
+def test_clase_presente_nunca_predicha_cuenta_como_f1_cero():
+    y = np.array([0, 1, 2, 2])
+    p = np.array([[0.8, 0.1, 0.1], [0.1, 0.8, 0.1], [0.8, 0.1, 0.1], [0.1, 0.8, 0.1]])
+    m = compute_metrics(y, p, CLASSES)
+    assert m["per_class"][CLASSES[2]]["f1"] == 0.0
+    assert m["macro_f1"] == pytest.approx(f1_score(y, p.argmax(1), average="macro", zero_division=0))

@@ -1,5 +1,10 @@
 # PapaSana AP-01
 
+Resultados y figuras para el artículo: [guía del módulo](docs/resultados-articulo.md).
+
+Entrenamiento local actualizado: [comparación de cuatro modelos ligeros en CUDA](docs/comparacion-cuatro-modelos.md).
+
+
 Sistema de apoyo a la decisión para la **detección por síntomas del tizón tardío de la papa** en condiciones de campo, integrado con alertas de riesgo climático.
 
 > Prototipo de investigación. Los resultados **no constituyen un diagnóstico definitivo** y deben ser revisados por un profesional agrónomo.
@@ -89,7 +94,7 @@ La contraseña es el valor de `DEMO_USERS_PASSWORD` en `.env`.
   - detalle con métricas por partición y por clase, matriz de confusión, curvas ROC y precisión-exhaustividad, fiabilidad (ECE) y curvas de entrenamiento;
   - comparación estadística entre modelos;
   - **promoción y rollback con cuatro ojos:** lo solicita el Investigador y lo aprueba otra persona. Al aprobarse, ml-service recarga el modelo; si falla, se restaura el anterior. Todo queda en la bitácora.
-- **Datasets y licencias (A1):** registro con el estado de la licencia. La verificación la registra una persona con el enlace a la fuente oficial, y se exporta `ml/datasets.yaml`. **Ninguna licencia externa está verificada todavía** (D-56).
+- **Datasets y licencias (A1):** registro con el estado de la licencia. La verificación la registra una persona con el enlace a la fuente oficial, y se exporta `ml/datasets.yaml`. Las fuentes oficiales de PlantVillage y PlantDoc se verificaron documentalmente el 2026-11-18; véase [entrenamiento reproducible](docs/reentrenamiento.md). D-56 conserva el estado histórico anterior.
 - No se muestra ninguna métrica que no venga de un run registrado. El DEMO y las pruebas de humo se marcan siempre como no validados.
 
 ## Qué incluye la Fase 3

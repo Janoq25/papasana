@@ -1,7 +1,11 @@
-data/
+/data/
 mlruns/
 mlflow.db
 optuna.db
+optuna-nested.db
+optuna-nested.db-*
+mlflow.db-*
+/configs/nested/
 *.egg-info/
 .pytest_cache/
 __pycache__/

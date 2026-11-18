@@ -1,6 +1,7 @@
 """Configuración de experimentos (YAML en `ml/configs/`), validada con Pydantic."""
 
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -17,9 +18,14 @@ class TrainCfg(BaseModel):
     label_smoothing: float = Field(0.0, ge=0, lt=1)
     patience: int = Field(5, ge=1)
     amp: bool = True
+    amp_dtype: Literal["float16", "bfloat16"] = "float16"
     num_workers: int = Field(2, ge=0)
     seed: int = 2026
     max_minutes: float | None = Field(None, gt=0)
+    accumulation_steps: int = Field(1, ge=1)
+    freeze_epochs: int = Field(0, ge=0)
+    backbone_lr_factor: float = Field(1.0, gt=0, le=1)
+    require_cuda: bool = False
 
 
 class DataCfg(BaseModel):
@@ -28,7 +34,7 @@ class DataCfg(BaseModel):
     roots: dict[str, str]
     train_datasets: list[str]
     external_datasets: list[str] = []
-    n_splits: int = Field(5, ge=2)
+    n_splits: int = Field(5, ge=3)
     near_duplicate_distance: int = Field(4, ge=0, le=16)
 
 
@@ -41,6 +47,7 @@ class TuneCfg(BaseModel):
     timeout_hours: float = Field(4.0, gt=0)
     fold: int = 0
     seed: int = 2026
+    inner_splits: int = Field(3, ge=3)
 
 
 class ExperimentCfg(BaseModel):
@@ -70,13 +77,22 @@ def _merge(base: dict, extra: dict) -> dict:
     return out
 
 
+def _load_yaml(path: Path, seen: set[Path] | None = None) -> dict:
+    seen = set() if seen is None else seen
+    path = path.resolve()
+    if path in seen:
+        raise ValueError(f"Herencia circular de configuración: {path}")
+    seen.add(path)
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if "base" in data:
+        data = _merge(_load_yaml(path.parent / data.pop("base"), seen), data)
+    return data
+
+
 def load_config(path: str | Path, overrides: dict | None = None) -> ExperimentCfg:
     """Lee un YAML; si declara `base: otro.yaml`, lo combina (las claves del archivo hijo ganan)."""
     path = Path(path)
-    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    if "base" in data:
-        base = yaml.safe_load((path.parent / data.pop("base")).read_text(encoding="utf-8")) or {}
-        data = _merge(base, data)
+    data = _load_yaml(path)
     if overrides:
         data = _merge(data, overrides)
     return ExperimentCfg.model_validate(data)

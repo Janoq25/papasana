@@ -1,0 +1,4 @@
+base: quick4_base.yaml
+architecture: efficientvit_b1
+train:
+  amp_dtype: bfloat16

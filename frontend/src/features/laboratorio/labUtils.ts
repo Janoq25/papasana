@@ -31,6 +31,9 @@ export const PROMOTION_STATUS_COLOR: Record<Promotion["status"], "default" | "wa
 };
 
 export const ARCH_LABEL: Record<string, string> = {
+  efficientnetv2_b0: "EfficientNetV2-B0",
+  mobilenetv4_conv_medium: "MobileNetV4 Conv Medium",
+  efficientvit_b1: "EfficientViT-B1",
   resnet50: "ResNet50",
   efficientnet_b3: "EfficientNet-B3",
   convnext_tiny: "ConvNeXt-Tiny",

@@ -43,8 +43,8 @@ def compute_metrics(y_true, probs, classes: list[str], *, curves: bool = True) -
         tn = total - tp - fn - fp
         precision = _safe_div(tp, tp + fp)
         recall = _safe_div(tp, tp + fn)
-        f1 = (2 * precision * recall / (precision + recall)) if precision and recall else (
-            0.0 if (precision is not None and recall is not None) else None)
+        # Una clase presente pero nunca predicha tiene F1=0; excluirla inflaría la macro.
+        f1 = _safe_div(2 * tp, 2 * tp + fp + fn)
         binary = (y_true == i).astype(int)
         has_both = 0 < binary.sum() < len(binary)
         auc_roc = float(roc_auc_score(binary, probs[:, i])) if has_both else None

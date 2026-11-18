@@ -1,0 +1,144 @@
+{
+  "source_fingerprint": "290bd91772607d31f04c0ce4fff79c5b63ca60717223c48efdbe81380e9fa2fa",
+  "manifest_sha256": "3ef95f9563afbf7f8584d7735ae232f1c565224b2b7a1c1fb853b3b7ba3e7924",
+  "external_n": 208,
+  "external_groups": 206,
+  "bootstrap_replicates": 5000,
+  "bootstrap_seed": 20261118,
+  "ci_method": "Percentil de remuestreo de grupos perceptuales con reemplazo",
+  "notes": [
+    "Análisis posterior descriptivo de modelos congelados; no se reentrenó ni cambió temperatura.",
+    "IC condicionales al conjunto observado y grupos disponibles; no incorporan variación de entrenamiento.",
+    "NLL estable calculada en log-espacio sin recortar probabilidades a 1e-12."
+  ],
+  "models": [
+    {
+      "architecture": "resnet50",
+      "run_id": "6056304c051f4e7f9fd5e85e6ace85e9",
+      "val_f1_three": 0.993108138744049,
+      "val_disease_only_n": 400,
+      "val_f1_disease_only": 1.0,
+      "external_f1_two": 0.5790455158876211,
+      "diagnostics": {
+        "val": {
+          "stable_nll": {
+            "before": 0.011771705638173967,
+            "after": 0.007919275596013636
+          },
+          "n": 428,
+          "cm_reproduced": true
+        },
+        "external_plantdoc_papa": {
+          "stable_nll": {
+            "before": 1.2797388411395532,
+            "after": 2.0649584627917297
+          },
+          "n": 208,
+          "cm_reproduced": true
+        }
+      },
+      "checkpoint_sha256": "19ebfe1360251843b98b009b2b7b07a813ed546bd5c652b96c5f3bfacbb4e651",
+      "external_cluster_bootstrap_f1_ci95": [
+        0.5080152643838429,
+        0.6484362295174322
+      ],
+      "matched_class_gap": 0.4209544841123789
+    },
+    {
+      "architecture": "efficientnetv2_b0",
+      "run_id": "09cbc33324d349c2894d880e89a19170",
+      "val_f1_three": 0.9933166248955723,
+      "val_disease_only_n": 400,
+      "val_f1_disease_only": 0.9987468671679198,
+      "external_f1_two": 0.504313725490196,
+      "diagnostics": {
+        "val": {
+          "stable_nll": {
+            "before": 0.0074421798963524135,
+            "after": 0.0021516932992872648
+          },
+          "n": 428,
+          "cm_reproduced": true
+        },
+        "external_plantdoc_papa": {
+          "stable_nll": {
+            "before": 3.37478683494212,
+            "after": 31.244754649809842
+          },
+          "n": 208,
+          "cm_reproduced": true
+        }
+      },
+      "checkpoint_sha256": "07556218729ebd9c11bdce25369db022a7ce17af82a0db92c9e7ff5645f73df5",
+      "external_cluster_bootstrap_f1_ci95": [
+        0.4325334629425011,
+        0.5710341291531955
+      ],
+      "matched_class_gap": 0.4944331416777238
+    },
+    {
+      "architecture": "mobilenetv4_conv_medium",
+      "run_id": "6e2e1bbdf4cd435bb12917736359432c",
+      "val_f1_three": 0.9866666666666667,
+      "val_disease_only_n": 400,
+      "val_f1_disease_only": 0.98,
+      "external_f1_two": 0.5848775240795971,
+      "diagnostics": {
+        "val": {
+          "stable_nll": {
+            "before": 201.4215245362819,
+            "after": 10.329190782164341
+          },
+          "n": 428,
+          "cm_reproduced": true
+        },
+        "external_plantdoc_papa": {
+          "stable_nll": {
+            "before": 9.204208374144457,
+            "after": 1.0286892935416934
+          },
+          "n": 208,
+          "cm_reproduced": true
+        }
+      },
+      "checkpoint_sha256": "976a68cb5acce1b54a5f4d318a7c550d280de6f6952a85e6d2feba5c14a37bd9",
+      "external_cluster_bootstrap_f1_ci95": [
+        0.5121256828927853,
+        0.6504916520023469
+      ],
+      "matched_class_gap": 0.39512247592040284
+    },
+    {
+      "architecture": "efficientvit_b1",
+      "run_id": "d6c5da9c6baa4d378d501cb8e89afc52",
+      "val_f1_three": 1.0,
+      "val_disease_only_n": 400,
+      "val_f1_disease_only": 1.0,
+      "external_f1_two": 0.5730694037145649,
+      "diagnostics": {
+        "val": {
+          "stable_nll": {
+            "before": 1.2094507352200108e-05,
+            "after": 4.9771460099740875e-09
+          },
+          "n": 428,
+          "cm_reproduced": true
+        },
+        "external_plantdoc_papa": {
+          "stable_nll": {
+            "before": 2.9184912806303336,
+            "after": 5.366134951129128
+          },
+          "n": 208,
+          "cm_reproduced": true
+        }
+      },
+      "checkpoint_sha256": "4b174c069e0332d345dfb0234256e83df6e14295aa52498c8b38ea037b76b3eb",
+      "external_cluster_bootstrap_f1_ci95": [
+        0.503185417663698,
+        0.6392816970891008
+      ],
+      "matched_class_gap": 0.42693059628543506
+    }
+  ]
+}

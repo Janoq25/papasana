@@ -1,4 +1,4 @@
-"""Las cinco arquitecturas comparadas en el estudio (docs/fase0_plan.md §6.3).
+"""Arquitecturas admitidas para entrenamiento e inferencia de PapaSana.
 
 Este módulo solo depende de torch y timm: lo usan el entrenamiento (`ml/`) y el servicio de inferencia
 (`ml-service`, que lo copia al construir su imagen), de modo que ambos construyen exactamente la misma red.
@@ -18,7 +18,23 @@ import timm
 import torch
 from torch import nn
 
-ARCHITECTURES = ("resnet50", "efficientnet_b3", "convnext_tiny", "cnn_vit", "effnet_att_bilstm")
+ARCHITECTURES = (
+    "resnet50", "efficientnet_b3", "convnext_tiny", "cnn_vit", "effnet_att_bilstm",
+    "efficientnetv2_b0", "mobilenetv4_conv_medium", "efficientvit_b1",
+)
+QUICK_COMPARISON_ARCHITECTURES = ("resnet50", "efficientnetv2_b0", "mobilenetv4_conv_medium", "efficientvit_b1")
+TIMM_MODELS = {
+    "resnet50": "resnet50.a1_in1k", "efficientnet_b3": "efficientnet_b3", "convnext_tiny": "convnext_tiny",
+    "efficientnetv2_b0": "tf_efficientnetv2_b0.in1k",
+    "mobilenetv4_conv_medium": "mobilenetv4_conv_medium.e500_r224_in1k",
+    "efficientvit_b1": "efficientvit_b1.r224_in1k",
+}
+PRETRAINED_REVISIONS = {
+    "resnet50": "767268603ca0cb0bfe326fa87277f19c419566ef",
+    "efficientnetv2_b0": "30b1df5883752d711e047538d9b01db797782818",
+    "mobilenetv4_conv_medium": "02a09fbfb82b289e871ba8255f9da58c056fb13b",
+    "efficientvit_b1": "cebc58510738e196c3cce3c3077dc8737973b7ba",
+}
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
 
@@ -32,6 +48,12 @@ class ArchSpec:
 
 
 SPECS: dict[str, ArchSpec] = {
+    "efficientnetv2_b0": ArchSpec("efficientnetv2_b0", "EfficientNetV2-B0", 224,
+                                    "CNN ligera con bloques fused-MBConv y MBConv."),
+    "mobilenetv4_conv_medium": ArchSpec("mobilenetv4_conv_medium", "MobileNetV4 Conv Medium", 224,
+                                         "CNN móvil de capacidad intermedia con pesos ImageNet."),
+    "efficientvit_b1": ArchSpec("efficientvit_b1", "EfficientViT-B1", 224,
+                                 "Red de visión eficiente con atención lineal multiescala."),
     "resnet50": ArchSpec("resnet50", "ResNet50", 224, "Red residual de 50 capas (referencia)."),
     "efficientnet_b3": ArchSpec("efficientnet_b3", "EfficientNet-B3", 300, "Escalado compuesto, B3."),
     "convnext_tiny": ArchSpec("convnext_tiny", "ConvNeXt-Tiny", 224, "CNN modernizada al estilo Transformer."),
@@ -135,10 +157,15 @@ def build_model(arch: str, num_classes: int, *, img_size: int | None = None, pre
         raise ValueError(f"Arquitectura desconocida: {arch}. Opciones: {', '.join(ARCHITECTURES)}")
     size = img_size or SPECS[arch].default_img_size
     drop = float(hparams.pop("drop_rate", 0.0))
-    if arch in ("resnet50", "efficientnet_b3", "convnext_tiny"):
+    if arch in TIMM_MODELS:
         if hparams:
             raise ValueError(f"Hiperparámetros no admitidos por {arch}: {sorted(hparams)}")
-        return timm.create_model(arch, pretrained=pretrained, num_classes=num_classes, drop_rate=drop)
+        overlay = {}
+        if pretrained and arch in PRETRAINED_REVISIONS:
+            overlay = {"pretrained_cfg_overlay": {
+                "hf_hub_id": f"timm/{TIMM_MODELS[arch]}@{PRETRAINED_REVISIONS[arch]}"}}
+        return timm.create_model(TIMM_MODELS[arch], pretrained=pretrained, num_classes=num_classes,
+                                 drop_rate=drop, **overlay)
     if arch == "cnn_vit":
         return CnnViT(num_classes, size, pretrained, dropout=drop or 0.1, **hparams)
     return EffNetAttBiLSTM(num_classes, size, pretrained, dropout=drop or 0.2, **hparams)
@@ -148,8 +175,12 @@ def gradcam_target(model: nn.Module, arch: str) -> nn.Module:
     """Capa cuya salida (mapa de características espacial) usa Grad-CAM en cada arquitectura."""
     if arch == "resnet50":
         return model.layer4
-    if arch == "efficientnet_b3":
+    if arch in ("efficientnet_b3", "efficientnetv2_b0"):
         return model.conv_head
+    if arch == "mobilenetv4_conv_medium":
+        return model.blocks[-1]  # Antes del pooling: conv_head ya produce 1×1 en MobileNetV4.
+    if arch == "efficientvit_b1":
+        return model.stages[-1]
     if arch == "convnext_tiny":
         return model.stages[-1]
     if arch in ("cnn_vit", "effnet_att_bilstm"):

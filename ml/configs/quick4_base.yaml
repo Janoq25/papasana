@@ -1,0 +1,16 @@
+base: base.yaml
+experiment: papasana-cuatro-gpu-20261118
+img_size: 224
+train:
+  epochs: 16
+  batch_size: 16
+  accumulation_steps: 2
+  lr: 0.0003
+  weight_decay: 0.0001
+  label_smoothing: 0.0
+  freeze_epochs: 0
+  backbone_lr_factor: 1.0
+  patience: 4
+  num_workers: 0
+  require_cuda: true
+  max_minutes: 15

@@ -10,6 +10,7 @@ from app.api.v1.routers import (
     lab,
     notifications,
     parcels,
+    publications,
     reports,
     roles,
     settings,
@@ -30,3 +31,5 @@ api_router.include_router(reports.router)
 api_router.include_router(notifications.router)
 api_router.include_router(lab.router)
 api_router.include_router(datasets.router)
+
+api_router.include_router(publications.router)
