@@ -1,0 +1,45 @@
+/* Enlace "Saltar al contenido" visible solo con foco de teclado (WCAG 2.4.1) */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 2000;
+  padding: 8px 16px;
+  background: #2e5e1f;
+  color: #fff;
+  border-radius: 6px;
+}
+.skip-link:focus {
+  left: 8px;
+}
+
+pre.json {
+  margin: 4px 0 0;
+  padding: 8px;
+  max-height: 240px;
+  overflow: auto;
+  font-size: 12px;
+  background: #f3f5f1;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Foco visible para navegación con teclado */
+:focus-visible {
+  outline: 3px solid #7a4b12;
+  outline-offset: 2px;
+}
+
+/* Texto solo para lectores de pantalla */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

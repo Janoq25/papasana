@@ -1,0 +1,8 @@
+base: base.yaml
+architecture: cnn_vit
+# H1: backbone CNN + encoder Transformer sobre los tokens espaciales
+hparams:
+  backbone: efficientnet_b0
+  d_model: 256
+  depth: 2
+  heads: 8

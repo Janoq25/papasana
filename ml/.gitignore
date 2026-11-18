@@ -1,0 +1,7 @@
+data/
+mlruns/
+mlflow.db
+optuna.db
+*.egg-info/
+.pytest_cache/
+__pycache__/

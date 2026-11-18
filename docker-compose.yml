@@ -1,0 +1,257 @@
+# PapaSana AP-01 — orquestación local
+#   docker compose up -d --build              → aplicación completa (fase actual)
+#   MLflow: http://127.0.0.1:5000  (MLFLOW_TRACKING_URI para entrenar desde el equipo)
+#   docker compose --profile lab up -d        → añade LangFlow (Fase 6, ver docs/decisiones.md D-03)
+name: papasana
+
+x-backend-env: &backend-env
+  APP_NAME: ${APP_NAME:-PapaSana AP-01}
+  APP_ENV: ${APP_ENV:-development}
+  TZ_DISPLAY: ${TZ_DISPLAY:-America/Lima}
+  FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+  DATABASE_URL: postgresql+psycopg://${APP_DB_USER}:${APP_DB_PASSWORD}@db:5432/${POSTGRES_DB}
+  MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+  TEST_DATABASE_URL: postgresql+psycopg://${APP_DB_USER}:${APP_DB_PASSWORD}@db:5432/${POSTGRES_TEST_DB}
+  TEST_MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_TEST_DB}
+  APP_DB_USER: ${APP_DB_USER}
+  JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET en .env}
+  ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-15}
+  REFRESH_TOKEN_DAYS: ${REFRESH_TOKEN_DAYS:-7}
+  COOKIE_SECURE: ${COOKIE_SECURE:-false}
+  RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+  DEMO_USERS_PASSWORD: ${DEMO_USERS_PASSWORD:-}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  MINIO_ENDPOINT: minio:9000
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+  SMTP_HOST: ${SMTP_HOST:-mailpit}
+  SMTP_PORT: ${SMTP_PORT:-1025}
+  SMTP_FROM: ${SMTP_FROM:-no-responder@papasana.pe}
+  ML_SERVICE_URL: http://ml-service:8001
+  ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN:?Defina ML_SERVICE_TOKEN en .env}
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  MLFLOW_UI_URL: ${MLFLOW_UI_URL:-http://127.0.0.1:5000}
+  LLM_PROVIDER: ${LLM_PROVIDER:-google}
+  LLM_MODEL: ${LLM_MODEL:-gemini-3.6-flash}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+
+services:
+  db:
+    build: ./infra/postgres
+    image: papasana/postgres:16-postgis-pgvector
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-papasana_test}
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Defina APP_DB_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_TEST_DB:-papasana_test}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "48mb"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    restart: unless-stopped
+
+  # La imagen de MinIO corre como UID 65532: se ajusta el propietario del volumen una sola vez.
+  minio-volume-init:
+    image: redis:7-alpine
+    command: ["sh", "-c", "chown -R 65532:65532 /data"]
+    volumes:
+      - miniodata:/data
+    restart: "no"
+
+  # minio/minio ya no se publica en Docker Hub; se usa la compilación de Chainguard (docs/decisiones.md D-21)
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Defina MINIO_ROOT_PASSWORD en .env}
+    volumes:
+      - miniodata:/data
+    ports:
+      - "127.0.0.1:9001:9001"
+    depends_on:
+      minio-volume-init:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    restart: unless-stopped
+
+  # Migraciones (usuario propietario) + datos semilla. Termina y libera memoria.
+  migrate:
+    build: ./backend
+    image: papasana/backend:dev
+    command: ["sh", "-c", "alembic upgrade head && python -m app.seed.seed && python -m app.seed.mlflow_init"]
+    environment:
+      <<: *backend-env
+      # Solo migrate la necesita: crea el rol y la base `mlflow` (Fase 4)
+      MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:?Defina MLFLOW_DB_PASSWORD en .env (scripts/init.ps1)}
+    depends_on:
+      db:
+        condition: service_healthy
+      # La actividad de ejemplo (Fase 3) guarda fotografías sintéticas en MinIO
+      minio:
+        condition: service_started
+    restart: "no"
+
+  # MLflow (Fase 4): tracking + Model Registry. Metadatos en la base `mlflow`, artefactos en MinIO servidos por
+  # el propio servidor (los clientes no reciben credenciales de MinIO). Puerto solo en 127.0.0.1, para registrar
+  # entrenamientos hechos en el equipo (GPU local) y abrir la interfaz de MLflow.
+  mlflow:
+    build: ./infra/mlflow
+    image: papasana/mlflow:dev
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      - --workers=1
+      - --backend-store-uri=postgresql://mlflow:${MLFLOW_DB_PASSWORD}@db:5432/mlflow
+      - --artifacts-destination=s3://mlflow
+      # MLflow 3 valida la cabecera Host (protección contra DNS rebinding): se declaran los nombres usados
+      - --allowed-hosts=mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:5000:5000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    restart: unless-stopped
+
+  # Inferencia (PyTorch CPU) + Grad-CAM. Sin puerto publicado: solo la red interna.
+  # Contexto = raíz del repositorio: copia las arquitecturas de ml/src/potato_blight/models (D-51).
+  ml-service:
+    build:
+      context: .
+      dockerfile: ml-service/Dockerfile
+    image: papasana/ml-service:dev
+    environment:
+      ML_SERVICE_TOKEN: ${ML_SERVICE_TOKEN}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1200m
+    restart: unless-stopped
+
+  backend:
+    image: papasana/backend:dev
+    environment: *backend-env
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      ml-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+    restart: unless-stopped
+
+  worker:
+    image: papasana/backend:dev
+    command: ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    environment: *backend-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      ml-service:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          # Fase 3: además genera reportes (Excel en flujo, hasta 50 000 filas)
+          memory: 512m
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    image: papasana/frontend:dev
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:

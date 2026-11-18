@@ -1,0 +1,8 @@
+# Solo lo usan las imágenes construidas con la raíz como contexto (ml-service).
+# Lista blanca: todo lo demás (node_modules, datos de ml/, .env) queda fuera del contexto.
+*
+!ml-service/
+!ml/src/potato_blight/__init__.py
+!ml/src/potato_blight/models/
+**/__pycache__
+**/.pytest_cache

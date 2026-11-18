@@ -1,0 +1,112 @@
+# Registro de datasets (obligatorio antes de descargar o usar cualquier dato; docs/fase0_plan.md §6.2).
+#
+# license_status:
+#   por_verificar  la licencia NO se ha confirmado en la fuente oficial: prohibido descargar o entrenar.
+#   verificada     una persona revisó la licencia en la fuente oficial (license_verified_by / _at).
+#   rechazada      la licencia no permite el uso previsto.
+# La verificación se registra en el módulo "Datasets y licencias" de la aplicación (A1); desde allí se exporta
+# este archivo actualizado (GET /api/v1/datasets/exportar).
+#
+# class_map: carpeta o etiqueta de la fuente -> clase por síntoma (D-01). Las clases no listadas se descartan.
+# "Early blight" es el tizón TEMPRANO (Alternaria solani): va a otra_enfermedad_foliar, NUNCA a tizón tardío.
+
+datasets:
+  - id: plantvillage_papa
+    name: PlantVillage (subconjunto de papa)
+    version: "2016"
+    source_url: https://github.com/spMohanty/PlantVillage-Dataset
+    license: null
+    license_url: null
+    license_status: por_verificar
+    license_verified_by: null
+    license_verified_at: null
+    license_notes: >-
+      Revisión preliminar del 2026-11-12 (sin verificar): el repositorio de GitHub no muestra una licencia en los
+      resultados de búsqueda; Meta-Album indica CC0 1.0 para la publicación original de los datos
+      (https://meta-album.github.io/datasets/PLT_VIL.html) y su versión en OpenML figura como CC BY-NC 4.0
+      (https://api.openml.org/d/44321). Hay que resolver la contradicción en la fuente oficial.
+    citation: >-
+      Hughes, D. P., & Salathé, M. (2015). An open access repository of images on plant health to enable the
+      development of mobile disease diagnostics. arXiv:1511.08060. Mohanty, S. P., Hughes, D. P., & Salathé, M.
+      (2016). Using deep learning for image-based plant disease detection. Frontiers in Plant Science, 7, 1419.
+    conditions: laboratorio
+    label_scheme: sintoma
+    etiological_confirmation: false
+    has_group_ids: false
+    role: entrenamiento
+    class_map:
+      Potato___healthy: sano
+      Potato___Late_blight: sintomas_compatibles_tizon_tardio
+      Potato___Early_blight: otra_enfermedad_foliar
+    notes: "Hojas sueltas sobre fondo uniforme. Sin IDs de planta: los splits agrupan casi duplicados (dHash)."
+
+  - id: plantdoc_papa
+    name: PlantDoc (hojas de papa)
+    version: "2019"
+    source_url: https://github.com/pratikkayal/PlantDoc-Dataset
+    license: null
+    license_url: null
+    license_status: por_verificar
+    license_verified_by: null
+    license_verified_at: null
+    license_notes: >-
+      Revisión preliminar del 2026-11-12 (sin verificar): copias de terceros en Roboflow lo declaran CC BY 4.0
+      (https://public.roboflow.com/object-detection/plantdoc). Falta confirmarlo en el repositorio de los autores.
+    citation: >-
+      Singh, D., Jain, N., Jain, P., Kayal, P., Kumawat, S., & Batra, N. (2020). PlantDoc: A dataset for visual
+      plant disease detection. Proceedings of the 7th ACM IKDD CoDS and 25th COMAD, 249-253. arXiv:1911.10317.
+    conditions: campo
+    label_scheme: sintoma
+    etiological_confirmation: false
+    has_group_ids: false
+    role: validacion_externa
+    class_map:
+      Potato leaf: sano
+      Potato leaf late blight: sintomas_compatibles_tizon_tardio
+      Potato leaf early blight: otra_enfermedad_foliar
+    notes: "Imágenes de internet en condiciones reales. Validación externa (entrenar con PlantVillage, probar aquí)."
+
+  - id: app_validadas
+    name: Imágenes validadas por experto en la aplicación
+    version: continuo
+    source_url: null
+    license: Datos propios del proyecto (con consentimiento de los productores)
+    license_url: null
+    license_status: por_verificar
+    license_verified_by: null
+    license_verified_at: null
+    license_notes: Requiere el consentimiento informado de los productores (Ley N.° 29733) antes de usarse.
+    citation: null
+    conditions: campo
+    label_scheme: sintoma
+    etiological_confirmation: parcial
+    has_group_ids: true
+    role: validacion_prospectiva
+    class_map:
+      sano: sano
+      tizon_tardio_sintomas: sintomas_compatibles_tizon_tardio
+      tizon_tardio_confirmado: sintomas_compatibles_tizon_tardio
+      otra_enfermedad: otra_enfermedad_foliar
+    notes: "Etiqueta final del especialista; grupo = parcela (evita fuga entre entrenamiento y prueba)."
+
+  - id: sintetico_smoke
+    name: Imágenes sintéticas para la prueba de humo
+    version: "1"
+    source_url: null
+    license: Generadas por el propio código (sin terceros)
+    license_url: null
+    license_status: verificada
+    license_verified_by: generado por potato_blight.data.synthetic
+    license_verified_at: "2026-11-12"
+    license_notes: Dibujos generados por programa. Solo sirven para probar el pipeline; sin valor científico.
+    citation: null
+    conditions: sintetico
+    label_scheme: sintoma
+    etiological_confirmation: false
+    has_group_ids: true
+    role: prueba_de_humo
+    class_map:
+      sano: sano
+      sintomas_compatibles_tizon_tardio: sintomas_compatibles_tizon_tardio
+      otra_enfermedad_foliar: otra_enfermedad_foliar
+    notes: "Nunca usar para reportar métricas."

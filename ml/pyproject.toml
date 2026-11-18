@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "potato-blight"
+version = "0.4.0"
+description = "Entrenamiento y evaluación de los modelos de AP-01 (tizón tardío de la papa, etiquetas por síntoma)"
+requires-python = ">=3.10"
+dependencies = [
+  "torch>=2.3",
+  "torchvision>=0.18",
+  "timm>=1.0",
+  "optuna>=4.0",
+  "mlflow>=3.1",
+  "scikit-learn>=1.5",
+  "scipy>=1.13",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "pillow>=10.4",
+  "pyyaml>=6.0",
+  "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+explain = ["shap>=0.46"]
+dev = ["pytest>=8.3", "ruff>=0.8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]

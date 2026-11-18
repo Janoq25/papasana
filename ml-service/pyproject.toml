@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# En la imagen, potato_blight se copia a /app; en desarrollo se usa ml/src directamente.
+pythonpath = [".", "../ml/src"]
+
+[tool.pyright]
+extraPaths = ["../ml/src"]
+
+[tool.ty.environment]
+extra-paths = ["../ml/src"]

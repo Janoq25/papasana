@@ -1,0 +1,36 @@
+# Secretos
+.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
+coverage/
+
+# Datos y modelos (nunca al repositorio)
+ml/data/
+ml/mlruns/
+*.pt
+*.pth
+*.onnx
+
+# Editor / SO
+.vscode/*
+!.vscode/extensions.json
+.idea/
+Thumbs.db
+.DS_Store
+
+# Cachés de herramientas
+*.tsbuildinfo
+.ruff_cache/

@@ -1,0 +1,8 @@
+base: base.yaml
+architecture: effnet_att_bilstm
+# H2 (D-06): la BiLSTM recorre la secuencia de parches del mapa de características de EfficientNet
+hparams:
+  backbone: efficientnet_b0
+  d_model: 256
+  hidden: 128
+  lstm_layers: 1
